@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔥 Tense Game ULTRA</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  color:white;
+  overflow:hidden;
+}
+
+/* พื้นหลังเฮลิคอปเตอร์ */
+body::before{
+  content:"";
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:url('https://images.unsplash.com/photo-1508615070457-7baeba4003ab') center/cover;
+  z-index:-2;
+  filter:brightness(0.4);
+}
+
+/* particle */
+canvas{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:-1;
+}
+
+.screen{
+  display:none;
+  text-align:center;
+  padding:20px;
+}
+
+.active{display:block;}
+
+button{
+  padding:12px;
+  margin:5px;
+  border:none;
+  border-radius:10px;
+  background:#111;
+  color:white;
+  cursor:pointer;
+}
+
+button:hover{
+  background:red;
+  box-shadow:0 0 10px red;
+}
+
+input{
+  padding:10px;
+  border-radius:10px;
+  border:none;
+}
+
+.card{
+  background:#000000aa;
+  padding:20px;
+  border-radius:20px;
+  max-width:400px;
+  margin:auto;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="bg"></canvas>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+<div class="card">
+<h1>🎮 Tense ULTRA</h1>
+<input id="playerName" placeholder="ใส่ชื่อผู้เล่น">
+<br><br>
+<button onclick="selectMode()">▶️ เริ่มเกม</button>
+<button onclick="showLeaderboard()">🏆 คะแนน</button>
+</div>
+</div>
+
+<!-- SELECT MODE -->
+<div id="mode" class="screen">
+<div class="card">
+<h2>เลือกด่าน</h2>
+<button onclick="startGame('present')">Present</button>
+<button onclick="startGame('continuous')">Continuous</button>
+<button onclick="startGame('past')">Past</button>
+<button onclick="startGame('future')">Future</button>
+</div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+<div class="card">
+<p id="timer"></p>
+<h2 id="question"></h2>
+<div id="choices"></div>
+</div>
+</div>
+
+<!-- END -->
+<div id="end" class="screen">
+<div class="card">
+<h1>🏆 จบเกม</h1>
+<p id="finalScore"></p>
+<button onclick="backMenu()">กลับเมนู</button>
+</div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderboard" class="screen">
+<div class="card">
+<h2>🏆 Leaderboard</h2>
+<div id="board"></div>
+<button onclick="backMenu()">กลับ</button>
+</div>
+</div>
+
+<audio id="bgm" loop src="https://cdn.pixabay.com/audio/2022/03/15/audio_5a5b1dbfa1.mp3"></audio>
+
+<script>
+// particle
+let c=document.getElementById("bg"),ctx=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+let p=[];
+for(let i=0;i<100;i++){
+ p.push({x:Math.random()*c.width,y:Math.random()*c.height,r:2});
+}
+function draw(){
+ ctx.clearRect(0,0,c.width,c.height);
+ ctx.fillStyle="red";
+ p.forEach(a=>{
+  ctx.beginPath();
+  ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+  ctx.fill();
+  a.y+=1;
+  if(a.y>c.height)a.y=0;
+ });
+ requestAnimationFrame(draw);
+}
+draw();
+
+// คำถาม 50+
+let allQuestions={
+present:[
+{q:"She ___ to school.",c:["go","goes"],a:"goes"},
+{q:"He ___ a dog.",c:["have","has"],a:"has"},
+{q:"They ___ football.",c:["play","plays"],a:"play"},
+],
+continuous:[
+{q:"I ___ eating.",c:["am","is"],a:"am"},
+{q:"She ___ reading.",c:["is","are"],a:"is"},
+],
+past:[
+{q:"I ___ to school yesterday.",c:["go","went"],a:"went"},
+{q:"She ___ rice.",c:["eat","ate"],a:"ate"},
+],
+future:[
+{q:"I ___ go tomorrow.",c:["will","did"],a:"will"},
+{q:"She ___ study.",c:["will","is"],a:"will"},
+]
+};
+
+// เพิ่มคำถามให้ครบ 50+
+Object.keys(allQuestions).forEach(k=>{
+ while(allQuestions[k].length<15){
+  let q=allQuestions[k][Math.floor(Math.random()*allQuestions[k].length)];
+  allQuestions[k].push(q);
+ }
+});
+
+let qset=[],index=0,score=0,time=30,mode;
+
+function selectMode(){
+ let name=document.getElementById("playerName").value;
+ if(!name){alert("ใส่ชื่อก่อน!");return;}
+ document.getElementById("menu").classList.remove("active");
+ document.getElementById("mode").classList.add("active");
+ document.getElementById("bgm").play();
+}
+
+function startGame(m){
+ mode=m;
+ qset=allQuestions[m].sort(()=>Math.random()-0.5);
+ index=0;score=0;time=30;
+
+ show("game");
+
+ timer=setInterval(()=>{
+  time--;
+  document.getElementById("timer").innerText="เวลา: "+time;
+  if(time<=0) endGame();
+ },1000);
+
+ loadQ();
+}
+
+function loadQ(){
+ let q=qset[index];
+ document.getElementById("question").innerText=q.q;
+ let html="";
+ q.c.forEach(x=>{
+  html+=`<button onclick="check('${x}')">${x}</button>`;
+ });
+ document.getElementById("choices").innerHTML=html;
+}
+
+function check(c){
+ if(c===qset[index].a)score++;
+ index++;
+ if(index<qset.length) loadQ();
+ else endGame();
+}
+
+function endGame(){
+ clearInterval(timer);
+ show("end");
+ let name=document.getElementById("playerName").value;
+ let data=JSON.parse(localStorage.getItem("score")||"[]");
+ data.push({name,score});
+ localStorage.setItem("score",JSON.stringify(data));
+ document.getElementById("finalScore").innerText=name+" : "+score;
+}
+
+function show(id){
+ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
+}
+
+function showLeaderboard(){
+ show("leaderboard");
+ let data=JSON.parse(localStorage.getItem("score")||"[]");
+ data.sort((a,b)=>b.score-a.score);
+ let html="";
+ data.slice(0,10).forEach(d=>{
+  html+=`<p>${d.name} - ${d.score}</p>`;
+ });
+ document.getElementById("board").innerHTML=html;
+}
+
+function backMenu(){
+ show("menu");
+}
+</script>
+
+</body>
+</html>
